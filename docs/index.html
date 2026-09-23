@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Parte de Hospitalización</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E9EDF1; --line:#D3DAE2;
+  --ink:#1B2434; --ink-2:#4C596B; --ink-3:#7B8797;
+  --accent:#0E6F6A; --accent-ink:#FFFFFF;
+  --closed:#BFE6FB; --closed-ink:#0B3D5C;      /* rotulador azul */
+  --hl:#FFF176; --hl-ink:#4A3F00;              /* flúor amarillo: pendiente destacado */
+  --warn:#F59E0B; --danger:#C0392B; --ok:#1E8E5A;
+  --shadow:0 1px 2px rgba(20,30,50,.08),0 6px 18px -8px rgba(20,30,50,.18);
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111821; --surface:#1A2330; --surface-2:#222E3D; --line:#31404F;
+    --ink:#EAF0F6; --ink-2:#B4C0CE; --ink-3:#7F8EA0;
+    --accent:#3FC1B8; --accent-ink:#06211F;
+    --closed:#164B6A; --closed-ink:#CFEBFF;
+    --hl:#7A6A00; --hl-ink:#FFF5B0;
+    --warn:#F5B84B; --danger:#F27D6E; --ok:#4FCB8A;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 20px -10px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111821; --surface:#1A2330; --surface-2:#222E3D; --line:#31404F;
+  --ink:#EAF0F6; --ink-2:#B4C0CE; --ink-3:#7F8EA0;
+  --accent:#3FC1B8; --accent-ink:#06211F;
+  --closed:#164B6A; --closed-ink:#CFEBFF;
+  --hl:#7A6A00; --hl-ink:#FFF5B0;
+  --warn:#F5B84B; --danger:#F27D6E; --ok:#4FCB8A;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 20px -10px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 "Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+textarea{resize:vertical;min-height:64px}
+.app{max-width:760px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+.view{display:flex;flex-direction:column;flex:1}
+
+/* header */
+.hdr{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 16px 8px;border-bottom:1px solid var(--line)}
+.hdr-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hdr h1{font-size:19px;margin:0;letter-spacing:-.01em}
+.hdr .date{color:var(--ink-2)}
+.hdr .spacer{flex:1}
+.who{display:flex;align-items:center;gap:6px;color:var(--ink-2);font-size:13px}
+.who select{width:auto;padding:5px 26px 5px 8px;font-size:13px;border-radius:999px}
+.filters{display:flex;gap:6px;margin-top:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 11px;font-size:13px;white-space:nowrap;color:var(--ink-2)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.stats{display:flex;gap:14px;margin-top:8px;font-size:12.5px;color:var(--ink-3);letter-spacing:.02em;text-transform:uppercase}
+.stats b{color:var(--ink);font-weight:700;font-size:14px}
+
+/* list */
+.list{padding:10px 16px 90px;display:flex;flex-direction:column;gap:8px}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:6px 10px;text-align:left;width:100%;position:relative}
+.row.closed{background:var(--closed);border-color:transparent;color:var(--closed-ink)}
+.row.closed .muted,.row.closed .name small{color:inherit;opacity:.75}
+.row .name{font-weight:700;font-size:16px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.row .name small{font-weight:400;font-size:13px;color:var(--ink-3)}
+.row.call .name .n{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--ink-2)}
+.tag{font-size:11px;padding:2px 6px;border-radius:5px;border:1px solid currentColor;opacity:.8;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.tag.ref{opacity:1;background:var(--surface-2);border-color:transparent;color:var(--ink-2)}
+.row.closed .tag.ref{background:rgba(255,255,255,.35);color:inherit}
+.dest{justify-self:end;font-family:"JetBrains Mono",monospace;font-size:12.5px;font-weight:600;padding:3px 7px;border-radius:6px;background:var(--surface-2);color:var(--ink-2)}
+.dest.alta{background:var(--ok);color:#fff}.dest.pts{background:var(--danger);color:#fff}
+.row.closed .dest{background:rgba(255,255,255,.4);color:inherit}
+.items{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px}
+.it{font-size:13px;padding:3px 8px;border-radius:6px;background:var(--surface-2);color:var(--ink-2);display:inline-flex;align-items:center;gap:5px;line-height:1.2}
+.it .box{font-family:"JetBrains Mono",monospace;font-size:12px}
+.it.done{color:var(--ink-3);text-decoration:line-through}
+.it.hl{background:var(--hl);color:var(--hl-ink);text-decoration:none;font-weight:700}
+.it.lab{border:1px dashed var(--ink-3)}
+.it.res{border:1px solid var(--ok);color:var(--ok);text-decoration:none}
+.row.closed .it{background:rgba(255,255,255,.45);color:inherit}
+.row.closed .it.hl{background:var(--hl);color:var(--hl-ink)}
+.meta{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 12px;font-size:12.5px;color:var(--ink-3);align-items:center}
+.meta .m{display:inline-flex;gap:4px;align-items:center}
+.meta .on{color:var(--ok);font-weight:700}
+.meta .off{color:var(--warn);font-weight:700}
+.row.closed .meta{color:inherit;opacity:.85}
+.note{grid-column:1/-1;font-size:13.5px;color:var(--ink);border-left:3px solid var(--warn);padding-left:8px;font-style:italic}
+.row.closed .note{border-color:var(--closed-ink)}
+.arrast{font-size:11px;color:var(--warn);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.empty{padding:40px 16px;text-align:center;color:var(--ink-3)}
+
+/* bottom bar */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;gap:10px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 70%,transparent);pointer-events:none}
+.bar>*{pointer-events:auto}
+.btn{border-radius:999px;padding:11px 16px;font-weight:700;font-size:14.5px;display:inline-flex;align-items:center;gap:6px;box-shadow:var(--shadow);border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.ghost{box-shadow:none;background:transparent;border-color:transparent;color:var(--ink-2);font-weight:400}
+.btn.danger{color:var(--danger)}
+.btn.sm{padding:7px 12px;font-size:13.5px;box-shadow:none}
+
+/* detail */
+.dhdr{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:8px 16px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.dhdr .back{font-size:15px;color:var(--accent);font-weight:700;padding:6px 4px}
+.dhdr .title{flex:1;min-width:0}
+.dhdr h2{margin:0;font-size:19px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.dhdr h2 small{font-size:13px;color:var(--ink-3);font-weight:400}
+.dhdr .sub{font-size:12.5px;color:var(--ink-3)}
+.body{padding:12px 16px 110px;display:flex;flex-direction:column;gap:14px}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.sec h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);display:flex;justify-content:space-between;align-items:center}
+.sec h3 .hint{font-weight:400;text-transform:none;letter-spacing:0;font-size:12px}
+.seg{display:flex;gap:4px;background:var(--surface-2);padding:3px;border-radius:9px}
+.seg button{flex:1;padding:8px 4px;border-radius:7px;font-weight:700;font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.seg button.alta[aria-pressed="true"]{background:var(--ok);color:#fff}
+.seg button.pts[aria-pressed="true"]{background:var(--danger);color:#fff}
+.plan{display:flex;flex-direction:column;gap:6px}
+.pi{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:9px 10px;border-radius:8px;background:var(--surface-2)}
+.pi.hl{background:var(--hl);color:var(--hl-ink)}
+.pi .st{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:600;min-width:26px;text-align:center}
+.pi .lbl{display:flex;flex-direction:column;gap:1px;text-align:left}
+.pi .lbl .t{font-weight:700}
+.pi .lbl .s{font-size:12px;color:var(--ink-3)}
+.pi.hl .lbl .s{color:inherit;opacity:.8}
+.pi .lbl.done .t{text-decoration:line-through;color:var(--ink-3);font-weight:400}
+.pi .star{font-size:18px;padding:4px 6px;line-height:1;color:var(--ink-3)}
+.pi.hl .star{color:var(--hl-ink)}
+.pi .arr{font-size:10.5px;color:var(--warn);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.addrow{display:flex;gap:6px;margin-top:8px;position:relative}
+.addrow input{flex:1}
+.addrow .kind{width:auto}
+.sugg{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);z-index:3;overflow:hidden}
+.sugg button{display:block;width:100%;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+.sugg button:last-child{border-bottom:0}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 10px;border-radius:8px;background:var(--surface-2)}
+.tog+.tog{margin-top:6px}
+.tog .l{font-weight:700}
+.tog .l small{display:block;font-weight:400;font-size:12px;color:var(--ink-3)}
+.sw{width:46px;height:28px;border-radius:999px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .15s}
+.sw[aria-checked="true"]{background:var(--ok)}
+.sw[aria-checked="true"]::after{transform:translateX(18px)}
+.sw.prov[aria-checked="true"]{background:var(--accent)}
+.hist{display:flex;flex-direction:column;gap:10px}
+.day{display:grid;grid-template-columns:auto 1fr;gap:10px}
+.day .d{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--ink-3);padding-top:3px;white-space:nowrap}
+.day .c{display:flex;flex-direction:column;gap:4px}
+.day .c .items{display:flex;flex-wrap:wrap;gap:4px}
+.day .c .nt{font-size:13px;font-style:italic;color:var(--ink-2)}
+.day .c .tut{font-size:12.5px;color:var(--ink-3)}
+.log{font-size:12px;color:var(--ink-3);font-family:"JetBrains Mono",monospace;display:flex;flex-direction:column;gap:3px;max-height:150px;overflow:auto}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:4px 9px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);font-weight:700}
+.status.closed{background:var(--closed);color:var(--closed-ink)}
+.status.call{background:var(--hl);color:var(--hl-ink)}
+.form{display:flex;flex-direction:column;gap:10px}
+.form label{font-size:12.5px;color:var(--ink-3);display:flex;flex-direction:column;gap:4px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rowbtns{display:flex;gap:8px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:999px;font-size:13.5px;box-shadow:var(--shadow);z-index:9;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100% - 32px)}
+.toast.show{opacity:1}
+.legend{font-size:12px;color:var(--ink-3);padding:4px 16px 0;display:flex;flex-wrap:wrap;gap:8px 14px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid var(--line)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="app" id="app"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+'use strict';
+/* ───────── datos demo (inspirados en el checklist de papel) ───────── */
+const PEOPLE=['Marta','Cata','Neo','Laura (ATV)','Recepción'];
+const DEPTS=['UCI','Interna','Cirugía','Neuro'];
+const today=new Date(); today.setHours(8,0,0,0);
+const dISO=(d)=>d.toISOString().slice(0,10);
+const shift=(n)=>{const d=new Date(today);d.setDate(d.getDate()+n);return dISO(d)};
+const fmtD=(iso)=>{const [y,m,d]=iso.split('-');return `${d}/${m}`};
+let uid=1; const id=()=>'i'+(uid++);
+
+// item: {id,t:texto, k:'prueba'|'lab'|'imagen'|'tarea', s:estado, hl:destacado, arr:arrastrado}
+// estados: prueba: plan→hecha ; lab: plan→hecha→enviada→resultado ; imagen: plan→hecha→informe ; tarea: plan→hecha
+const CYCLE={prueba:['plan','hecha'],lab:['plan','hecha','enviada','resultado'],imagen:['plan','hecha','informe'],tarea:['plan','hecha']};
+const SLBL={plan:'pendiente',hecha:'hecha',enviada:'enviada a lab',resultado:'resultado recibido',informe:'informe recibido'};
+const SBOX={plan:'☐',hecha:'☒',enviada:'→',resultado:'✓',informe:'✓'};
+const it=(t,k='tarea',s='plan',hl=false,arr=false)=>({id:id(),t,k,s,hl,arr});
+const day=(date,items,extra={})=>({date,items,nota:'',tutor:{llamado:false,txt:''},presu:{hecho:false,pagado:false},provet:false,dest:'24h',...extra});
+
+function seed(){
+  return {
+    me:'Marta',
+    filter:'Todos',
+    log:[],
+    patients:[
+      {id:'p1',name:'Hermes',tutor:'Vidal',dept:'UCI',ref:true,in:shift(-1),
+        days:[
+          day(shift(-1),[it('Ingreso urgencias','tarea','hecha'),it('Analítica completa','lab','enviada'),it('Fluidoterapia','tarea','hecha')],{nota:'PAS 90 al ingreso, letárgico.',tutor:{llamado:true,txt:'Explicado ingreso y presupuesto inicial'},presu:{hecho:true,pagado:false},provet:true}),
+          day(shift(0),[it('ECG / eco ♡','imagen'),it('Ex. neuro','tarea'),it('Eco abdomen','imagen','hecha'),it('Test Addison','lab','enviada',true),it('Desparasitar','tarea'),it('PAS / FC c/4h','tarea')],{nota:'PAS 136 FC 167. No ha comido. 37,8. Peso ↗ 4,2 kg.',presu:{hecho:true,pagado:false}})
+        ]},
+      {id:'p2',name:'Bobo',tutor:'Pérez',dept:'Interna',ref:true,in:shift(0),
+        days:[day(shift(0),[it('POCUS abdominal','imagen'),it('RER','tarea'),it('Control dolor','tarea'),it('Citología ¿?','lab'),it('Temperatura','tarea')])]},
+      {id:'p3',name:'Conan',tutor:'Soler',dept:'UCI',ref:false,in:shift(-3),
+        days:[
+          day(shift(-3),[it('Rx tórax','imagen','informe'),it('Eco ♡','imagen','informe'),it('Sonda urinaria','tarea','hecha')],{nota:'HTO crónico. SaO₂ 88 al ingreso.',tutor:{llamado:true,txt:'Pronóstico reservado'},presu:{hecho:true,pagado:true},provet:true}),
+          day(shift(-2),[it('Cobalamina IM','tarea','hecha'),it('Bioquímica','lab','resultado')],{nota:'SaO₂ 90-92.',tutor:{llamado:true,txt:'Evolución'},presu:{hecho:true,pagado:true},provet:true}),
+          day(shift(-1),[it('Retirar sonda','tarea','hecha'),it('PAS','tarea','hecha')],{nota:'SaO₂ 92-95. Come.',tutor:{llamado:true,txt:'Posible alta mañana'},presu:{hecho:true,pagado:true},provet:true}),
+          day(shift(0),[it('Bioquímica + creat','lab','hecha'),it('Eco ♡ control','imagen','hecha')],{nota:'Estable. Alta si creat ok.',tutor:{llamado:true,txt:'Recogida 18h'},presu:{hecho:true,pagado:true},provet:true,dest:'alta'})
+        ]},
+      {id:'p4',name:'Lilo',tutor:'Martín',dept:'Cirugía',ref:false,in:shift(-1),
+        days:[
+          day(shift(-1),[it('Rx abdomen','imagen','informe'),it('Preoperatorio','lab','resultado')],{nota:'Cuerpo extraño estómago.',tutor:{llamado:true,txt:'Consentimiento cirugía'},presu:{hecho:true,pagado:true},provet:true}),
+          day(shift(0),[it('Gastrotomía','tarea'),it('Analgesia post-qx','tarea'),it('Control dolor / parada','tarea')],{presu:{hecho:true,pagado:true}})
+        ]},
+      {id:'p5',name:'Jacob',tutor:'Roca',dept:'UCI',ref:true,in:shift(-1),
+        days:[
+          day(shift(-1),[it('Hemograma','lab','resultado'),it('AFAST','imagen','informe')],{nota:'Hto 14. Anemia severa.',tutor:{llamado:true,txt:'Explicada transfusión'},presu:{hecho:true,pagado:false},provet:true}),
+          day(shift(0),[it('Concentrado eritrocitario','tarea','hecha'),it('Metoclopramida','tarea','hecha'),it('Analgesia','tarea','hecha'),it('PAS / FC','tarea','hecha'),it('Eco ♡','imagen','hecha'),it('TAC','imagen','plan',true,true)],{nota:'Hto post-transfusión 22.',presu:{hecho:false,pagado:false}})
+        ]},
+      {id:'p6',name:'Mario',tutor:'Gil',dept:'Neuro',ref:true,in:shift(-2),
+        days:[
+          day(shift(-2),[it('RM','imagen','informe'),it('Ex. neuro','tarea','hecha')],{tutor:{llamado:true,txt:'Resultados RM'},presu:{hecho:true,pagado:true},provet:true}),
+          day(shift(-1),[it('Pregabalina','tarea','hecha'),it('Temperatura','tarea','hecha')],{tutor:{llamado:true,txt:''},presu:{hecho:true,pagado:true},provet:true}),
+          day(shift(0),[it('Eco ♡','imagen','informe'),it('Pregabalina','tarea','hecha'),it('Temperatura','tarea','hecha')],{nota:'Peso 3,2 kg.',tutor:{llamado:true,txt:'Alta hoy, recogida tarde'},presu:{hecho:true,pagado:true},provet:true,dest:'alta'})
+        ]},
+      {id:'p7',name:'Nina',tutor:'Ferrer',dept:'Interna',ref:false,in:shift(0),
+        days:[day(shift(0),[it('Glucemia c/2h','tarea'),it('Insulina','tarea'),it('Fructosamina','lab')],{nota:'Cetoacidosis diabética.'})]},
+      {id:'p8',name:'Nina',tutor:'Costa',dept:'Neuro',ref:true,in:shift(0),
+        days:[day(shift(0),[it('Ex. neuro','tarea','hecha'),it('RM','imagen'),it('Llamar tutor tras RM','tarea')])]},
+    ]
+  };
+}
+
+/* ───────── estado + persistencia ───────── */
+let S; const KEY='vethandoff-proto-v1';
+function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);uid=(S._uid||500);return}}catch(e){} S=seed(); uid=500}
+function save(){S._uid=uid;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+let view={name:'list'}; // {name:'list'} | {name:'detail',pid} | {name:'new'} | {name:'close',pid}
+
+const now=()=>{const d=new Date();return d.toTimeString().slice(0,5)};
+function logIt(p,msg){p.log=p.log||[];p.log.unshift(`${now()} ${S.me} · ${msg}`);if(p.log.length>40)p.log.length=40}
+const cur=(p)=>p.days[p.days.length-1];
+const isDone=(i)=>i.s!=='plan';
+// estado del día: open | call (todo hecho, falta llamar) | closed (hecho + tutor llamado)
+function dayState(p){const d=cur(p);const allDone=d.items.length>0&&d.items.every(isDone);if(!allDone)return'open';return d.tutor.llamado?'closed':'call'}
+const pendingHl=(p)=>cur(p).items.filter(i=>i.hl&&!isDone(i)).length;
+function history(){const set=new Map();for(const p of S.patients)for(const d of p.days)for(const i of d.items)set.set(i.t.toLowerCase(),{t:i.t,k:i.k});return[...set.values()]}
+
+/* ───────── acciones ───────── */
+function cycle(p,item){const c=CYCLE[item.k];const n=c[(c.indexOf(item.s)+1)%c.length];item.s=n;logIt(p,`${item.t}: ${SLBL[n]}`);save();render();toast(`${item.t} · ${SLBL[n]}`)}
+function toggleHl(p,item){item.hl=!item.hl;logIt(p,`${item.t}: ${item.hl?'destacado':'sin destacar'}`);save();render()}
+function addItem(p,t,k){t=t.trim();if(!t)return;cur(p).items.push(it(t,k));logIt(p,`añade ${t}`);save();render();toast(`Añadido: ${t}`)}
+function removeItem(p,item){const d=cur(p);d.items=d.items.filter(x=>x!==item);logIt(p,`quita ${item.t}`);save();render()}
+function setTutor(p,llamado){cur(p).tutor.llamado=llamado;logIt(p,`tutor ${llamado?'llamado':'pendiente de llamar'}`);save();render()}
+function setTutorTxt(p,txt){cur(p).tutor.txt=txt;save()}
+function setNota(p,txt){cur(p).nota=txt;save()}
+function setPresu(p,f,v){cur(p).presu[f]=v;logIt(p,`presupuesto ${f}: ${v?'sí':'no'}`);save();render()}
+function setProvet(p,v){cur(p).provet=v;logIt(p,v?'plan volcado a Provet':'plan NO volcado a Provet');save();render()}
+function setDest(p,d){cur(p).dest=d;logIt(p,`destino: ${d.toUpperCase()}`);save();render()}
+function newPatient(f){const p={id:'p'+Date.now(),name:f.name.trim(),tutor:f.tutor.trim(),dept:f.dept,ref:f.ref,in:shift(0),days:[day(shift(0),[])],log:[]};if(!p.name)return;logIt(p,'ingreso creado');S.patients.push(p);save();view={name:'detail',pid:p.id};render();toast(`Ingreso: ${p.name}`)}
+function closeIngreso(p,motivo){p.out={date:shift(0),motivo};logIt(p,`cierre de ingreso: ${motivo}`);save();view={name:'list'};render();toast(`${p.name}: ${motivo}`)}
+function newDay(){ // 08:00 → plan nuevo; lo no hecho arrastra
+  let n=0;for(const p of S.patients){if(p.out)continue;const d=cur(p);const carry=d.items.filter(i=>!isDone(i)||(i.k==='lab'&&i.s!=='resultado')||(i.k==='imagen'&&i.s!=='informe')).map(i=>({...i,id:id(),arr:true}));n+=carry.length;const nd=day(shift(1),carry);p.days.push(nd)}
+  today.setDate(today.getDate()+1);save();render();toast(`Nuevo parte 08:00 · ${n} ítems arrastrados`)}
+function resetDemo(){try{localStorage.removeItem(KEY)}catch(e){}today.setHours(8,0,0,0);const t=new Date();today.setFullYear(t.getFullYear(),t.getMonth(),t.getDate());load();view={name:'list'};render();toast('Demo reiniciada')}
+
+let toastT;function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),1600)}
+const esc=(s)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ───────── render ───────── */
+const app=document.getElementById('app');
+function render(){
+  if(view.name==='list')renderList();
+  else if(view.name==='detail')renderDetail(S.patients.find(p=>p.id===view.pid));
+  else if(view.name==='new')renderNew();
+  else if(view.name==='close')renderClose(S.patients.find(p=>p.id===view.pid));
+}
+function itemChip(i){const cls=['it'];if(isDone(i))cls.push('done');if(i.hl&&!isDone(i))cls.push('hl');if(i.s==='enviada')cls.push('lab');if(i.s==='resultado'||i.s==='informe')cls.push('res');return`<span class="${cls.join(' ')}"><span class="box">${SBOX[i.s]}</span>${esc(i.t)}${i.arr&&!isDone(i)?' <span class="arrast">↺</span>':''}</span>`}
+
+function renderList(){
+  const active=S.patients.filter(p=>!p.out);
+  const shown=active.filter(p=>S.filter==='Todos'||p.dept===S.filter);
+  const closed=active.filter(p=>dayState(p)==='closed').length;
+  const withHl=active.filter(p=>pendingHl(p)>0).length;
+  const noProvet=active.filter(p=>!cur(p).provet).length;
+  const order={open:0,call:1,closed:2};
+  shown.sort((a,b)=>order[dayState(a)]-order[dayState(b)]||a.name.localeCompare(b.name));
+  app.innerHTML=`
+  <div class="view">
+    <header class="hdr">
+      <div class="hdr-row">
+        <h1>Parte</h1><span class="date mono">${fmtD(shift(0))} · 08:00</span>
+        <span class="spacer"></span>
+        <label class="who">Yo <select id="me">${PEOPLE.map(x=>`<option ${x===S.me?'selected':''}>${x}</option>`).join('')}</select></label>
+      </div>
+      <div class="filters" role="tablist">${['Todos',...DEPTS].map(f=>`<button class="chip" role="tab" aria-pressed="${S.filter===f}" data-f="${f}">${f}${f==='Todos'?` · ${active.length}`:` · ${active.filter(p=>p.dept===f).length}`}</button>`).join('')}</div>
+      <div class="stats"><span><b>${active.length}</b> ingresados</span><span><b>${closed}</b> cerrados</span><span><b>${withHl}</b> con destacados</span><span><b>${noProvet}</b> sin volcar</span></div>
+    </header>
+    <div class="legend"><span><i style="background:var(--surface)"></i> plan abierto</span><span><s>nombre</s> hecho, falta llamar</span><span><i style="background:var(--closed)"></i> cerrado</span><span><i style="background:var(--hl)"></i> pendiente destacado</span><span>↺ arrastrado de ayer</span></div>
+    <div class="list">
+      ${shown.length?shown.map(rowHTML).join(''):`<div class="empty">Ningún ingresado en ${esc(S.filter)}.</div>`}
+    </div>
+    <div class="bar">
+      <button class="btn ghost" id="reset">Reiniciar demo</button>
+      <button class="btn" id="newday">⟳ Nuevo parte 08:00</button>
+      <button class="btn primary" id="add">＋ Ingreso</button>
+    </div>
+  </div>`;
+  document.getElementById('me').onchange=e=>{S.me=e.target.value;save()};
+  app.querySelectorAll('.chip[data-f]').forEach(b=>b.onclick=()=>{S.filter=b.dataset.f;save();render()});
+  app.querySelectorAll('.row').forEach(r=>r.onclick=()=>{view={name:'detail',pid:r.dataset.id};render();window.scrollTo(0,0)});
+  document.getElementById('add').onclick=()=>{view={name:'new'};render()};
+  document.getElementById('newday').onclick=newDay;
+  document.getElementById('reset').onclick=resetDemo;
+}
+function rowHTML(p){
+  const d=cur(p),st=dayState(p);
+  const dup=S.patients.some(q=>q!==p&&!q.out&&q.name===p.name);
+  const destCls=d.dest==='alta'?'alta':d.dest==='pts'?'pts':'';
+  const destTxt={'24h':'24h+',alta:'ALTA',pts:'PTS'}[d.dest];
+  return`<button class="row ${st}" data-id="${p.id}">
+    <div class="name"><span class="n">${esc(p.name)}</span>${dup?`<small>${esc(p.tutor)}</small>`:''}<span class="tag">${p.dept}</span>${p.ref?'<span class="tag ref">REF</span>':''}</div>
+    <div class="dest ${destCls}">${destTxt}</div>
+    <div class="items">${d.items.length?d.items.map(itemChip).join(''):'<span class="it" style="opacity:.6">sin plan todavía</span>'}</div>
+    ${d.nota?`<div class="note">${esc(d.nota)}</div>`:''}
+    <div class="meta">
+      <span class="m">tutor <span class="${d.tutor.llamado?'on':'off'}">${d.tutor.llamado?'llamado':'llamar'}</span></span>
+      <span class="m">presu <span class="${d.presu.hecho?'on':'off'}">${d.presu.hecho?'hecho':'no'}</span></span>
+      <span class="m">pago <span class="${d.presu.pagado?'on':'off'}">${d.presu.pagado?'sí':'no'}</span></span>
+      <span class="m">Provet <span class="${d.provet?'on':'off'}">${d.provet?'volcado':'pendiente'}</span></span>
+      <span class="m mono" style="margin-left:auto">día ${p.days.length}</span>
+    </div>
+  </button>`}
+
+let suggQ='',suggK='tarea';
+function renderDetail(p){
+  if(!p){view={name:'list'};return render()}
+  const d=cur(p),st=dayState(p);
+  const stTxt={open:'Plan abierto',call:'Hecho · falta llamar al tutor',closed:'Cerrado · tutor llamado'}[st];
+  const prev=p.days.slice(0,-1).reverse();
+  app.innerHTML=`
+  <div class="view">
+    <header class="dhdr">
+      <button class="back" id="back">‹ Parte</button>
+      <div class="title"><h2>${esc(p.name)} <small>${esc(p.tutor)} · ${p.dept}${p.ref?' · REF':''}</small></h2>
+      <div class="sub mono">ingreso ${fmtD(p.in)} · día ${p.days.length}</div></div>
+      <span class="status ${st}">${stTxt}</span>
+    </header>
+    <div class="body">
+      <section class="sec">
+        <h3>Destino hoy</h3>
+        <div class="seg">
+          <button data-d="24h" aria-pressed="${d.dest==='24h'}">24h+</button>
+          <button data-d="alta" class="alta" aria-pressed="${d.dest==='alta'}">ALTA</button>
+          <button data-d="pts" class="pts" aria-pressed="${d.dest==='pts'}">PTS</button>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h3>Plan del día <span class="hint">toca para avanzar · ★ destacar</span></h3>
+        <div class="plan">
+          ${d.items.map(i=>`<div class="pi ${i.hl&&!isDone(i)?'hl':''}" data-id="${i.id}">
+              <button class="st cyc" title="${SLBL[i.s]}">${SBOX[i.s]}</button>
+              <button class="lbl cyc ${isDone(i)?'done':''}"><span class="t">${esc(i.t)}</span><span class="s">${SLBL[i.s]}${i.k==='lab'?' · lab externo':i.k==='imagen'?' · imagen':''}${i.arr?' · <span class="arr">↺ de ayer</span>':''}</span></button>
+              <button class="star" aria-label="destacar">${i.hl?'★':'☆'}</button>
+            </div>`).join('')||'<div class="pi" style="opacity:.6">Sin ítems. Añade el plan abajo.</div>'}
+        </div>
+        <div class="addrow">
+          <input id="newi" placeholder="Añadir prueba / tarea… (ej. cobalamina)" autocomplete="off" value="${esc(suggQ)}">
+          <select id="newk" class="kind"><option value="tarea" ${suggK==='tarea'?'selected':''}>tarea</option><option value="prueba" ${suggK==='prueba'?'selected':''}>prueba</option><option value="lab" ${suggK==='lab'?'selected':''}>lab ext.</option><option value="imagen" ${suggK==='imagen'?'selected':''}>imagen</option></select>
+          <button class="btn primary sm" id="addi">＋</button>
+          <div class="sugg" id="sugg" hidden></div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h3>Hoy, lo relevante <span class="hint">no es el examen: eso va en Provet</span></h3>
+        <textarea id="nota" placeholder="p. ej. fiebre 40 esta mañana, presión justa…">${esc(d.nota)}</textarea>
+      </section>
+
+      <section class="sec">
+        <h3>Tutor</h3>
+        <div class="tog"><div class="l">Tutor llamado hoy<small>${d.tutor.llamado?'Cierra el día si el plan está hecho':'Sin llamar todavía'}</small></div><button class="sw" role="switch" aria-checked="${d.tutor.llamado}" id="tut"></button></div>
+        <textarea id="tuttxt" style="margin-top:6px" placeholder="Qué se le ha comunicado…">${esc(d.tutor.txt)}</textarea>
+      </section>
+
+      <section class="sec">
+        <h3>Presupuesto <span class="hint">el importe y la factura viven en Provet</span></h3>
+        <div class="tog"><div class="l">Presupuesto hecho<small>Presentado al tutor con las pruebas del día</small></div><button class="sw" role="switch" aria-checked="${d.presu.hecho}" data-f="hecho"></button></div>
+        <div class="tog"><div class="l">Pagado<small>Lo puede marcar recepción</small></div><button class="sw" role="switch" aria-checked="${d.presu.pagado}" data-f="pagado"></button></div>
+      </section>
+
+      <section class="sec">
+        <div class="tog"><div class="l">Plan volcado a Provet<small>Todo lo de hoy está escrito en la fuente oficial</small></div><button class="sw prov" role="switch" aria-checked="${d.provet}" id="prov"></button></div>
+      </section>
+
+      <section class="sec">
+        <h3>Histórico del ingreso <span class="hint">${prev.length} día${prev.length===1?'':'s'} anteriores</span></h3>
+        <div class="hist">
+          ${prev.length?prev.map(x=>`<div class="day"><div class="d">${fmtD(x.date)}</div><div class="c">
+              <div class="items">${x.items.map(itemChip).join('')||'<span class="it">—</span>'}</div>
+              ${x.nota?`<div class="nt">${esc(x.nota)}</div>`:''}
+              ${x.tutor.llamado?`<div class="tut">☎ tutor: ${esc(x.tutor.txt||'llamado')}</div>`:'<div class="tut">☎ tutor no llamado</div>'}
+            </div></div>`).join(''):'<div class="tut" style="color:var(--ink-3);font-size:13px">Primer día de ingreso.</div>'}
+        </div>
+      </section>
+
+      <section class="sec">
+        <h3>Quién ha tocado qué</h3>
+        <div class="log">${(p.log||[]).map(esc).join('<br>')||'<span>Sin cambios registrados.</span>'}</div>
+      </section>
+
+      <div class="rowbtns">
+        <button class="btn danger" id="close">Cerrar ingreso…</button>
+      </div>
+    </div>
+    <div class="bar"><button class="btn primary" id="back2">‹ Volver al parte</button></div>
+  </div>`;
+  const go=()=>{suggQ='';view={name:'list'};render();window.scrollTo(0,0)};
+  document.getElementById('back').onclick=go;document.getElementById('back2').onclick=go;
+  app.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>setDest(p,b.dataset.d));
+  app.querySelectorAll('.pi[data-id]').forEach(el=>{const item=d.items.find(i=>i.id===el.dataset.id);
+    el.querySelectorAll('.cyc').forEach(b=>b.onclick=()=>cycle(p,item));
+    el.querySelector('.star').onclick=()=>toggleHl(p,item);
+    let t;el.querySelector('.lbl').addEventListener('contextmenu',e=>{e.preventDefault();removeItem(p,item)});
+    el.querySelector('.lbl').addEventListener('touchstart',()=>{t=setTimeout(()=>{if(window.getSelection)window.getSelection().removeAllRanges();removeItem(p,item);toast(`Quitado: ${item.t}`)},700)},{passive:true});
+    el.querySelector('.lbl').addEventListener('touchend',()=>clearTimeout(t));el.querySelector('.lbl').addEventListener('touchmove',()=>clearTimeout(t));
+  });
+  const inp=document.getElementById('newi'),kind=document.getElementById('newk'),sg=document.getElementById('sugg');
+  const doAdd=()=>{addItem(p,inp.value,kind.value);suggQ='';};
+  document.getElementById('addi').onclick=doAdd;
+  inp.onkeydown=e=>{if(e.key==='Enter')doAdd()};
+  kind.onchange=()=>{suggK=kind.value};
+  inp.oninput=()=>{suggQ=inp.value;const q=inp.value.trim().toLowerCase();if(q.length<2){sg.hidden=true;return}
+    const m=history().filter(h=>h.t.toLowerCase().includes(q)).slice(0,5);
+    if(!m.length){sg.hidden=true;return}
+    sg.innerHTML=m.map(h=>`<button data-t="${esc(h.t)}" data-k="${h.k}">${esc(h.t)} <span style="color:var(--ink-3);font-size:12px">· ${h.k}</span></button>`).join('');sg.hidden=false;
+    sg.querySelectorAll('button').forEach(b=>b.onclick=()=>{addItem(p,b.dataset.t,b.dataset.k);suggQ=''})};
+  document.getElementById('nota').oninput=e=>setNota(p,e.target.value);
+  document.getElementById('tuttxt').oninput=e=>setTutorTxt(p,e.target.value);
+  document.getElementById('tut').onclick=()=>setTutor(p,!d.tutor.llamado);
+  app.querySelectorAll('.sw[data-f]').forEach(b=>b.onclick=()=>setPresu(p,b.dataset.f,b.getAttribute('aria-checked')!=='true'));
+  document.getElementById('prov').onclick=()=>setProvet(p,!d.provet);
+  document.getElementById('close').onclick=()=>{view={name:'close',pid:p.id};render();window.scrollTo(0,0)};
+}
+
+function renderNew(){
+  app.innerHTML=`
+  <div class="view">
+    <header class="dhdr"><button class="back" id="back">‹ Parte</button><div class="title"><h2>Nuevo ingreso</h2><div class="sub">Solo lo mínimo. Especie, raza y peso ya están en Provet.</div></div></header>
+    <div class="body">
+      <section class="sec form">
+        <div class="two">
+          <label>Nombre<input id="fn" placeholder="Nina" autofocus></label>
+          <label>Apellido tutor<input id="ft" placeholder="Ferrer"></label>
+        </div>
+        <label>Departamento<select id="fd">${DEPTS.map(x=>`<option>${x}</option>`).join('')}</select></label>
+        <div class="tog"><div class="l">Referido<small>Viene derivado de otro centro</small></div><button class="sw" role="switch" aria-checked="false" id="fr"></button></div>
+        <div class="rowbtns"><button class="btn primary" id="ok">Crear ingreso</button><button class="btn ghost" id="cancel">Cancelar</button></div>
+      </section>
+    </div>
+  </div>`;
+  const back=()=>{view={name:'list'};render()};
+  document.getElementById('back').onclick=back;document.getElementById('cancel').onclick=back;
+  const fr=document.getElementById('fr');fr.onclick=()=>fr.setAttribute('aria-checked',fr.getAttribute('aria-checked')!=='true');
+  document.getElementById('ok').onclick=()=>newPatient({name:document.getElementById('fn').value,tutor:document.getElementById('ft').value,dept:document.getElementById('fd').value,ref:fr.getAttribute('aria-checked')==='true'});
+}
+function renderClose(p){
+  if(!p){view={name:'list'};return render()}
+  const motivos=['Alta médica','Alta voluntaria','Segunda opinión (se van)','Eutanasia (PTS)','Fallecimiento'];
+  app.innerHTML=`
+  <div class="view">
+    <header class="dhdr"><button class="back" id="back">‹ ${esc(p.name)}</button><div class="title"><h2>Cerrar ingreso</h2><div class="sub">${esc(p.name)} · ${esc(p.tutor)} sale de la lista del parte.</div></div></header>
+    <div class="body"><section class="sec form">
+      ${motivos.map(m=>`<button class="btn ${m.startsWith('Alta')?'':'danger'}" data-m="${m}" style="justify-content:flex-start">${m}</button>`).join('')}
+      <button class="btn ghost" id="cancel">Cancelar</button>
+    </section></div>
+  </div>`;
+  const back=()=>{view={name:'detail',pid:p.id};render()};
+  document.getElementById('back').onclick=back;document.getElementById('cancel').onclick=back;
+  app.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>closeIngreso(p,b.dataset.m));
+}
+
+load();render();
+</script>
+
+</body>
+</html>
