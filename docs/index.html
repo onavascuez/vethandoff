@@ -173,7 +173,7 @@ textarea{resize:vertical;min-height:64px}
 .seg button.alta[aria-pressed="true"]{background:var(--ok);color:#fff}
 .seg button.pts[aria-pressed="true"]{background:var(--danger);color:#fff}
 .plan{display:flex;flex-direction:column;gap:6px}
-.pi{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:9px 10px;border-radius:8px;background:var(--surface-2)}
+.pi{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:9px 10px;border-radius:8px;background:var(--surface-2)}
 .pi.hl{background:var(--hl);color:var(--hl-ink)}
 .pi .st{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:600;min-width:26px;text-align:center}
 .pi .lbl{display:flex;flex-direction:column;gap:1px;text-align:left}
@@ -191,7 +191,23 @@ textarea{resize:vertical;min-height:64px}
 .pi.cancel .lbl .t{text-decoration:line-through;color:var(--cancel);font-weight:400}
 .pi.cancel .lbl .s{color:var(--cancel)}
 .pi.cancel .st{color:var(--cancel)}
-.pi .star.cancel{font-size:16px}
+.pi .more{font-size:20px;line-height:1;padding:4px 8px;color:var(--ink-3);border-radius:6px}
+.pi.hl .more{color:var(--hl-ink)}
+.pi .badge{font-size:11px;color:var(--warn);font-weight:700}
+/* hoja de acciones */
+.sheet-bg{position:fixed;inset:0;background:rgba(10,16,24,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px}
+.sheet .grip{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 6px}
+.sheet h4{margin:0 0 4px;font-size:15px;display:flex;justify-content:space-between;gap:8px}
+.sheet h4 small{font-weight:400;color:var(--ink-3)}
+.sheet .act{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:10px;background:var(--surface-2);text-align:left;font-size:15px}
+.sheet .act .ic{width:24px;text-align:center;font-size:17px}
+.sheet .act small{display:block;font-size:12px;color:var(--ink-3)}
+.sheet .act.danger{color:var(--danger)}
+.sheet .act.confirm{background:var(--danger);color:#fff}
+.sheet .act.confirm small{color:rgba(255,255,255,.85)}
+.sheet .editrow{display:flex;gap:6px}
+.sheet .close{align-self:center;color:var(--ink-3);padding:8px 14px}
 .pi .star{font-size:18px;padding:4px 6px;line-height:1;color:var(--ink-3)}
 .pi.hl .star{color:var(--hl-ink)}
 .pi .arr{font-size:10.5px;color:var(--warn);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
@@ -331,6 +347,34 @@ function cycle(p,item){const c=CYCLE[item.k];if(item.s==='cancelada'){item.s='pl
 function cancelItem(p,item){item.s=item.s==='cancelada'?'plan':'cancelada';item.hl=false;logIt(p,`${item.t}: ${item.s==='cancelada'?'cancelada (tutor no la quiere)':'reactivada'}`);save();render();toast(item.s==='cancelada'?`${item.t} cancelada`:`${item.t} de nuevo pendiente`)}
 function toggleHl(p,item){item.hl=!item.hl;logIt(p,`${item.t}: ${item.hl?'destacado':'sin destacar'}`);save();render()}
 function addItem(p,t,k){t=t.trim();if(!t)return;cur(p).items.push(it(t,k));logIt(p,`añade ${t}`);save();render();toast(`Añadido: ${t}`)}
+function editItem(p,item,t){t=t.trim();if(!t||t===item.t)return;logIt(p,`renombra "${item.t}" → "${t}"`);item.t=t;save();render();toast('Texto actualizado')}
+let sheetConfirm=false;
+function openSheet(p,item){
+  sheetConfirm=false;
+  const bg=document.createElement('div');bg.className='sheet-bg';bg.id='sheet';
+  const draw=()=>{const done=isDone(item),canc=item.s==='cancelada';
+    bg.innerHTML=`<div class="sheet" role="dialog" aria-label="Opciones">
+      <div class="grip"></div>
+      <h4><span>${esc(item.t)}</span><small>${SLBL[item.s]}</small></h4>
+      ${canc?'':`<button class="act" data-a="hl"><span class="ic">${item.hl?'★':'☆'}</span><span>${item.hl?'Quitar destacado':'Destacar'}<small>Pendiente importante, se ve en amarillo</small></span></button>`}
+      <button class="act" data-a="cancel"><span class="ic">${canc?'↻':'⊘'}</span><span>${canc?'Reactivar':'Cancelar'}<small>${canc?'Vuelve a pendiente':'El tutor no la quiere. Queda resuelta pero marcada'}</small></span></button>
+      <div class="act" style="flex-direction:column;align-items:stretch;gap:6px"><span>✎ Editar texto</span><div class="editrow"><input id="edit-t" value="${esc(item.t)}"><button class="btn primary sm" data-a="edit">OK</button></div></div>
+      ${sheetConfirm
+        ?`<button class="act confirm" data-a="del"><span class="ic">🗑</span><span>Sí, eliminar "${esc(item.t)}"<small>Desaparece del plan. Queda en el registro de cambios</small></span></button>`
+        :`<button class="act danger" data-a="del"><span class="ic">🗑</span><span>Eliminar<small>Error al escribir o ya no hace falta</small></span></button>`}
+      <button class="close" data-a="close">Cerrar</button>
+    </div>`;
+    bg.querySelectorAll('[data-a]').forEach(b=>b.onclick=(e)=>{e.stopPropagation();const a=b.dataset.a;
+      if(a==='hl'){toggleHl(p,item);closeSheet()}
+      else if(a==='cancel'){cancelItem(p,item);closeSheet()}
+      else if(a==='edit'){editItem(p,item,bg.querySelector('#edit-t').value);closeSheet()}
+      else if(a==='del'){if(!sheetConfirm){sheetConfirm=true;draw()}else{removeItem(p,item);toast(`Eliminada: ${item.t}`);closeSheet()}}
+      else closeSheet()});
+    bg.querySelector('#edit-t').onkeydown=e=>{if(e.key==='Enter'){editItem(p,item,e.target.value);closeSheet()}};
+  };
+  draw();bg.onclick=(e)=>{if(e.target===bg)closeSheet()};document.body.appendChild(bg);
+}
+function closeSheet(){const el=document.getElementById('sheet');if(el)el.remove()}
 function removeItem(p,item){const d=cur(p);d.items=d.items.filter(x=>x!==item);logIt(p,`quita ${item.t}`);save();render()}
 function setTutor(p,llamado){cur(p).tutor.llamado=llamado;logIt(p,`tutor ${llamado?'llamado':'pendiente de llamar'}`);save();render()}
 function setTutorTxt(p,txt){cur(p).tutor.txt=txt;save()}
@@ -438,13 +482,12 @@ function renderDetail(p){
       </section>
 
       <section class="sec">
-        <h3>Plan del día <span class="hint">toca para avanzar · ★ destacar · ⊘ cancelar</span></h3>
+        <h3>Plan del día <span class="hint">toca para avanzar · ⋯ más opciones</span></h3>
         <div class="plan">
           ${d.items.map(i=>`<div class="pi ${i.hl&&!isDone(i)?'hl':''} ${i.s==='cancelada'?'cancel':''} ${i.s==='resultado'||i.s==='informe'?'res':''} ${i.s==='enviada'?'lab':''}" data-id="${i.id}">
               <button class="st cyc" title="${SLBL[i.s]}">${SBOX[i.s]}</button>
-              <button class="lbl cyc ${isDone(i)?'done':''}"><span class="t">${esc(i.t)}</span><span class="s">${SLBL[i.s]}${isPrueba(i)?' · '+KLBL[i.k]:''}${i.arr?' · <span class="arr">↺ de ayer</span>':''}</span></button>
-              <button class="star" aria-label="destacar" ${i.s==='cancelada'?'hidden':''}>${i.hl?'★':'☆'}</button>
-              <button class="star cancel" aria-label="${i.s==='cancelada'?'reactivar':'cancelar'}" title="${i.s==='cancelada'?'Reactivar':'El tutor no la quiere'}">${i.s==='cancelada'?'↻':'⊘'}</button>
+              <button class="lbl cyc ${isDone(i)?'done':''}"><span class="t">${i.hl&&!isDone(i)?'★ ':''}${esc(i.t)}</span><span class="s">${SLBL[i.s]}${isPrueba(i)?' · '+KLBL[i.k]:''}${i.arr?' · <span class="arr">↺ de ayer</span>':''}</span></button>
+              <button class="more" aria-label="Opciones de ${esc(i.t)}">⋯</button>
             </div>`).join('')||'<div class="pi" style="opacity:.6">Sin ítems. Añade el plan abajo.</div>'}
         </div>
         <div class="addrow">
@@ -506,11 +549,7 @@ function renderDetail(p){
   app.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>setDest(p,b.dataset.d));
   app.querySelectorAll('.pi[data-id]').forEach(el=>{const item=d.items.find(i=>i.id===el.dataset.id);
     el.querySelectorAll('.cyc').forEach(b=>b.onclick=()=>cycle(p,item));
-    const st=el.querySelector('.star:not(.cancel)');if(st)st.onclick=()=>toggleHl(p,item);
-    el.querySelector('.star.cancel').onclick=()=>cancelItem(p,item);
-    let t;el.querySelector('.lbl').addEventListener('contextmenu',e=>{e.preventDefault();removeItem(p,item)});
-    el.querySelector('.lbl').addEventListener('touchstart',()=>{t=setTimeout(()=>{if(window.getSelection)window.getSelection().removeAllRanges();removeItem(p,item);toast(`Quitado: ${item.t}`)},700)},{passive:true});
-    el.querySelector('.lbl').addEventListener('touchend',()=>clearTimeout(t));el.querySelector('.lbl').addEventListener('touchmove',()=>clearTimeout(t));
+    el.querySelector('.more').onclick=(e)=>{e.stopPropagation();openSheet(p,item)};
   });
   const inp=document.getElementById('newi'),kind=document.getElementById('newk'),sg=document.getElementById('sugg');
   const doAdd=()=>{addItem(p,inp.value,kind.value);suggQ='';};
