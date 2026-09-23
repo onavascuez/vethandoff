@@ -17,6 +17,10 @@
   --closed:#BFE6FB; --closed-ink:#0B3D5C;      /* rotulador azul */
   --hl:#FFF176; --hl-ink:#4A3F00;              /* flúor amarillo: pendiente destacado */
   --warn:#F59E0B; --danger:#C0392B; --ok:#1E8E5A;
+  --d-uci:#D9463B; --d-uci-bg:#FDE3E0; --d-uci-ink:#7A1F18;
+  --d-int:#1F8A5C; --d-int-bg:#DDF3E8; --d-int-ink:#0F4A31;
+  --d-cir:#6D4FC2; --d-cir-bg:#E9E3FA; --d-cir-ink:#3B2A75;
+  --d-neu:#D97A06; --d-neu-bg:#FDEBD2; --d-neu-ink:#6E3E00;
   --shadow:0 1px 2px rgba(20,30,50,.08),0 6px 18px -8px rgba(20,30,50,.18);
   --r:10px;
 }
@@ -29,6 +33,10 @@
     --closed:#164B6A; --closed-ink:#CFEBFF;
     --hl:#7A6A00; --hl-ink:#FFF5B0;
     --warn:#F5B84B; --danger:#F27D6E; --ok:#4FCB8A;
+    --d-uci:#F07A70; --d-uci-bg:#4A2320; --d-uci-ink:#FFD9D5;
+    --d-int:#4FCB8A; --d-int-bg:#173B2B; --d-int-ink:#CFF3E0;
+    --d-cir:#A78BFA; --d-cir-bg:#2E2652; --d-cir-ink:#E4DCFF;
+    --d-neu:#F5B84B; --d-neu-bg:#4A3410; --d-neu-ink:#FFE7BF;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 20px -10px rgba(0,0,0,.6);
   }
 }
@@ -40,6 +48,10 @@
   --closed:#164B6A; --closed-ink:#CFEBFF;
   --hl:#7A6A00; --hl-ink:#FFF5B0;
   --warn:#F5B84B; --danger:#F27D6E; --ok:#4FCB8A;
+  --d-uci:#F07A70; --d-uci-bg:#4A2320; --d-uci-ink:#FFD9D5;
+  --d-int:#4FCB8A; --d-int-bg:#173B2B; --d-int-ink:#CFF3E0;
+  --d-cir:#A78BFA; --d-cir-bg:#2E2652; --d-cir-ink:#E4DCFF;
+  --d-neu:#F5B84B; --d-neu-bg:#4A3410; --d-neu-ink:#FFE7BF;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 20px -10px rgba(0,0,0,.6);
 }
 *{box-sizing:border-box}
@@ -67,6 +79,20 @@ textarea{resize:vertical;min-height:64px}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .stats{display:flex;gap:14px;margin-top:8px;font-size:12.5px;color:var(--ink-3);letter-spacing:.02em;text-transform:uppercase}
 .stats b{color:var(--ink);font-weight:700;font-size:14px}
+
+/* departamentos */
+.dep-UCI{--dc:var(--d-uci);--dbg:var(--d-uci-bg);--dink:var(--d-uci-ink)}
+.dep-Interna{--dc:var(--d-int);--dbg:var(--d-int-bg);--dink:var(--d-int-ink)}
+.dep-Cirugía{--dc:var(--d-cir);--dbg:var(--d-cir-bg);--dink:var(--d-cir-ink)}
+.dep-Neuro{--dc:var(--d-neu);--dbg:var(--d-neu-bg);--dink:var(--d-neu-ink)}
+.tag.dep{background:var(--dbg);color:var(--dink);border-color:transparent;opacity:1;font-weight:700}
+.row.closed .tag.dep{background:var(--dbg);color:var(--dink)}
+.chip.dep{border-color:var(--dc);color:var(--dink);background:var(--dbg)}
+.chip.dep[aria-pressed="true"]{background:var(--dc);color:#fff;border-color:var(--dc)}
+.chip.dep .dot{display:none}
+.row{border-left:5px solid var(--dc,var(--line))}
+.dhdr{border-top:4px solid var(--dc,transparent)}
+.legend .dep i{border-color:transparent;background:var(--dc)}
 
 /* list */
 .list{padding:10px 16px 90px;display:flex;flex-direction:column;gap:8px}
@@ -304,9 +330,10 @@ function renderList(){
         <span class="spacer"></span>
         <label class="who">Yo <select id="me">${PEOPLE.map(x=>`<option ${x===S.me?'selected':''}>${x}</option>`).join('')}</select></label>
       </div>
-      <div class="filters" role="tablist">${['Todos',...DEPTS].map(f=>`<button class="chip" role="tab" aria-pressed="${S.filter===f}" data-f="${f}">${f}${f==='Todos'?` · ${active.length}`:` · ${active.filter(p=>p.dept===f).length}`}</button>`).join('')}</div>
+      <div class="filters" role="tablist">${['Todos',...DEPTS].map(f=>`<button class="chip ${f==='Todos'?'':'dep dep-'+f}" role="tab" aria-pressed="${S.filter===f}" data-f="${f}">${f}${f==='Todos'?` · ${active.length}`:` · ${active.filter(p=>p.dept===f).length}`}</button>`).join('')}</div>
       <div class="stats"><span><b>${active.length}</b> ingresados</span><span><b>${closed}</b> cerrados</span><span><b>${withHl}</b> con destacados</span><span><b>${noProvet}</b> sin volcar</span></div>
     </header>
+    <div class="legend">${DEPTS.map(x=>`<span class="dep dep-${x}"><i></i> ${x}</span>`).join('')}</div>
     <div class="legend"><span><i style="background:var(--surface)"></i> plan abierto</span><span><s>nombre</s> hecho, falta llamar</span><span><i style="background:var(--closed)"></i> cerrado</span><span><i style="background:var(--hl)"></i> pendiente destacado</span><span>↺ arrastrado de ayer</span></div>
     <div class="list">
       ${shown.length?shown.map(rowHTML).join(''):`<div class="empty">Ningún ingresado en ${esc(S.filter)}.</div>`}
@@ -329,8 +356,8 @@ function rowHTML(p){
   const dup=S.patients.some(q=>q!==p&&!q.out&&q.name===p.name);
   const destCls=d.dest==='alta'?'alta':d.dest==='pts'?'pts':'';
   const destTxt={'24h':'24h+',alta:'ALTA',pts:'PTS'}[d.dest];
-  return`<button class="row ${st}" data-id="${p.id}">
-    <div class="name"><span class="n">${esc(p.name)}</span>${dup?`<small>${esc(p.tutor)}</small>`:''}<span class="tag">${p.dept}</span>${p.ref?'<span class="tag ref">REF</span>':''}</div>
+  return`<button class="row ${st} dep-${p.dept}" data-id="${p.id}">
+    <div class="name"><span class="n">${esc(p.name)}</span>${dup?`<small>${esc(p.tutor)}</small>`:''}<span class="tag dep">${p.dept}</span>${p.ref?'<span class="tag ref">REF</span>':''}</div>
     <div class="dest ${destCls}">${destTxt}</div>
     <div class="items">${d.items.length?d.items.map(itemChip).join(''):'<span class="it" style="opacity:.6">sin plan todavía</span>'}</div>
     ${d.nota?`<div class="note">${esc(d.nota)}</div>`:''}
@@ -351,9 +378,9 @@ function renderDetail(p){
   const prev=p.days.slice(0,-1).reverse();
   app.innerHTML=`
   <div class="view">
-    <header class="dhdr">
+    <header class="dhdr dep-${p.dept}">
       <button class="back" id="back">‹ Parte</button>
-      <div class="title"><h2>${esc(p.name)} <small>${esc(p.tutor)} · ${p.dept}${p.ref?' · REF':''}</small></h2>
+      <div class="title"><h2>${esc(p.name)} <small>${esc(p.tutor)}${p.ref?' · REF':''}</small> <span class="tag dep">${p.dept}</span></h2>
       <div class="sub mono">ingreso ${fmtD(p.in)} · día ${p.days.length}</div></div>
       <span class="status ${st}">${stTxt}</span>
     </header>
