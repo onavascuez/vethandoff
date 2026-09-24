@@ -452,8 +452,8 @@ function rowHTML(p){
     ${d.nota?`<div class="note">${esc(d.nota)}</div>`:''}
     <div class="meta">
       <span class="m">tutor <span class="${d.tutor.llamado?'on':'off'}">${d.tutor.llamado?'llamado':'llamar'}</span></span>
-      <span class="m">presu <span class="${d.presu.pagado?'on':d.presu.hecho?'':'off'}">${d.presu.pagado?'pagado':d.presu.presentado?'presentado':d.presu.hecho?'hecho':'no'}</span></span>
-      <span class="m">receta <span class="${d.presu.receta?'on':''}">${d.presu.receta?'sí':'no'}</span></span>
+      <span class="m">presu <span class="${d.presu.pagado?'on':'off'}">${d.presu.pagado?'pagado':d.presu.presentado?'presentado':d.presu.hecho?'hecho':'no'}</span></span>
+      <span class="m">receta <span class="${d.presu.receta?'on':'off'}">${d.presu.receta?'sí':'no'}</span></span>
       <span class="m">Provet <span class="${d.provet?'on':'off'}">${d.provet?'volcado':'pendiente'}</span></span>
       <span class="m mono" style="font-size:11px">· día ${p.days.length}</span>
     </div>
