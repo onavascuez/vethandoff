@@ -374,6 +374,26 @@ function openSheet(p,item){
   };
   draw();bg.onclick=(e)=>{if(e.target===bg)closeSheet()};document.body.appendChild(bg);
 }
+function openMenu(){
+  let confirmDay=false;
+  const bg=document.createElement('div');bg.className='sheet-bg';bg.id='sheet';
+  const draw=()=>{bg.innerHTML=`<div class="sheet" role="dialog" aria-label="Menú">
+      <div class="grip"></div>
+      <h4><span>Parte · ${fmtD(shift(0))}</span><small>${(S.partes||[]).length} partes guardados</small></h4>
+      <button class="act" data-a="hist"><span class="ic">🗂</span><span>Partes anteriores<small>Ver cómo estaba el tablero en partes pasados</small></span></button>
+      ${confirmDay
+        ?`<button class="act confirm" data-a="day"><span class="ic">⟳</span><span>Sí, abrir el parte de mañana 08:00<small>Se guarda el parte actual y lo pendiente arrastra</small></span></button>`
+        :`<button class="act" data-a="day"><span class="ic">⟳</span><span>Nuevo parte 08:00<small>Cierra el día: guarda el parte y arrastra pendientes</small></span></button>`}
+      <button class="act danger" data-a="reset"><span class="ic">↺</span><span>Reiniciar demo<small>Vuelve a los datos de ejemplo</small></span></button>
+      <button class="close" data-a="close">Cerrar</button>
+    </div>`;
+    bg.querySelectorAll('[data-a]').forEach(b=>b.onclick=(e)=>{e.stopPropagation();const a=b.dataset.a;
+      if(a==='day'){if(!confirmDay){confirmDay=true;draw()}else{closeSheet();newDay()}}
+      else if(a==='hist'){closeSheet();view={name:'partes'};render();window.scrollTo(0,0)}
+      else if(a==='reset'){closeSheet();resetDemo()}
+      else closeSheet()})};
+  draw();bg.onclick=(e)=>{if(e.target===bg)closeSheet()};document.body.appendChild(bg);
+}
 function closeSheet(){const el=document.getElementById('sheet');if(el)el.remove()}
 function removeItem(p,item){const d=cur(p);d.items=d.items.filter(x=>x!==item);logIt(p,`quita ${item.t}`);save();render()}
 function setTutor(p,llamado){cur(p).tutor.llamado=llamado;logIt(p,`tutor ${llamado?'llamado':'pendiente de llamar'}`);save();render()}
@@ -383,11 +403,19 @@ function setPresu(p,f,v){cur(p).presu[f]=v;logIt(p,`presupuesto ${f}: ${v?'sí':
 function setProvet(p,v){cur(p).provet=v;logIt(p,v?'plan volcado a Provet':'plan NO volcado a Provet');save();render()}
 function setDest(p,d){cur(p).dest=d;logIt(p,`destino: ${d.toUpperCase()}`);save();render()}
 function newPatient(f){const p={id:'p'+Date.now(),name:f.name.trim(),tutor:f.tutor.trim(),dept:f.dept,ref:f.ref,in:shift(0),days:[day(shift(0),[])],log:[]};if(!p.name)return;logIt(p,'ingreso creado');S.patients.push(p);save();view={name:'detail',pid:p.id};render();toast(`Ingreso: ${p.name}`)}
+function deletePatient(p){S.patients=S.patients.filter(x=>x!==p);save();view={name:'list'};render();toast(`Ficha de ${p.name} eliminada`)}
 function closeIngreso(p,motivo){p.out={date:shift(0),motivo};logIt(p,`cierre de ingreso: ${motivo}`);save();view={name:'list'};render();toast(`${p.name}: ${motivo}`)}
+function snapshot(){
+  const active=S.patients.filter(p=>!p.out);
+  const rows=active.map(p=>({name:p.name,tutor:p.tutor,dept:p.dept,ref:p.ref,dayN:p.days.length,state:dayState(p),d:JSON.parse(JSON.stringify(cur(p)))}));
+  S.partes=S.partes||[];S.partes.push({date:shift(0),label:'cierre del día',rows,n:active.length});
+  if(S.partes.length>30)S.partes.shift();
+}
 function newDay(){ // 08:00 → plan nuevo; lo no hecho arrastra
+  snapshot();
   let n=0;for(const p of S.patients){if(p.out)continue;const d=cur(p);const carry=d.items.filter(i=>i.s!=='cancelada'&&(!isDone(i)||(i.k==='labext'&&i.s!=='resultado')||(i.k==='labint'&&i.s!=='resultado')||(i.k==='imagen'&&i.s!=='informe'))).map(i=>({...i,id:id(),arr:true}));n+=carry.length;const nd=day(shift(1),carry);p.days.push(nd)}
   today.setDate(today.getDate()+1);save();render();toast(`Nuevo parte 08:00 · ${n} ítems arrastrados`)}
-function resetDemo(){try{localStorage.removeItem(KEY)}catch(e){}today.setHours(8,0,0,0);const t=new Date();today.setFullYear(t.getFullYear(),t.getMonth(),t.getDate());load();view={name:'list'};render();toast('Demo reiniciada')}
+function resetDemo(){try{localStorage.removeItem(KEY)}catch(e){}today.setHours(8,0,0,0);const t=new Date();today.setFullYear(t.getFullYear(),t.getMonth(),t.getDate());load();S.partes=[];view={name:'list'};render();toast('Demo reiniciada')}
 
 let toastT;function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),1600)}
 const esc=(s)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -398,6 +426,9 @@ function render(){
   if(view.name==='list')renderList();
   else if(view.name==='detail')renderDetail(S.patients.find(p=>p.id===view.pid));
   else if(view.name==='new')renderNew();
+  else if(view.name==='partes')renderPartes();
+  else if(view.name==='parte')renderParte(view.idx);
+  else if(view.name==='edit')renderEdit(S.patients.find(p=>p.id===view.pid));
   else if(view.name==='close')renderClose(S.patients.find(p=>p.id===view.pid));
 }
 function itemChip(i,hist=false){const cls=['it'];if(isDone(i))cls.push('done');if(i.hl&&!isDone(i))cls.push('hl');if(i.s==='enviada')cls.push('lab');if(i.s==='resultado'||i.s==='informe')cls.push('res');if(i.s==='cancelada')cls.push('cancel');if(hist&&!isPrueba(i))cls.push('tarea-h');return`<span class="${cls.join(' ')}"><span class="box">${SBOX[i.s]}</span>${esc(i.t)}${i.arr&&!isDone(i)?' <span class="arrast">↺</span>':''}</span>`}
@@ -417,6 +448,7 @@ function renderList(){
         <h1>Parte</h1><span class="date mono">${fmtD(shift(0))} · 08:00</span>
         <span class="spacer"></span>
         <button class="chip" id="lg" aria-pressed="${!!S.legend}" title="Leyenda" aria-label="Mostrar leyenda" style="padding:4px 10px;font-weight:700">?</button>
+        <button class="chip" id="menu" aria-label="Menú" style="padding:4px 10px;font-weight:700">≡</button>
         <label class="who">Yo <select id="me">${PEOPLE.map(x=>`<option ${x===S.me?'selected':''}>${x}</option>`).join('')}</select></label>
       </div>
       <div class="filters" role="tablist">${['Todos',...DEPTS].map(f=>`<button class="chip ${f==='Todos'?'':'dep '+dep(f)}" role="tab" aria-pressed="${S.filter===f}" data-f="${f}">${f}${f==='Todos'?` · ${active.length}`:` · ${active.filter(p=>p.dept===f).length}`}</button>`).join('')}</div>
@@ -427,8 +459,6 @@ function renderList(){
       ${shown.length?shown.map(rowHTML).join(''):`<div class="empty">Ningún ingresado en ${esc(S.filter)}.</div>`}
     </div>
     <div class="bar">
-      <button class="btn ghost" id="reset">Reiniciar demo</button>
-      <button class="btn" id="newday">⟳ Nuevo parte 08:00</button>
       <button class="btn primary" id="add">＋ Ingreso</button>
     </div>
   </div>`;
@@ -437,8 +467,7 @@ function renderList(){
   app.querySelectorAll('.chip[data-f]').forEach(b=>b.onclick=()=>{S.filter=b.dataset.f;save();render()});
   app.querySelectorAll('.row').forEach(r=>r.onclick=()=>{view={name:'detail',pid:r.dataset.id};render();window.scrollTo(0,0)});
   document.getElementById('add').onclick=()=>{view={name:'new'};render()};
-  document.getElementById('newday').onclick=newDay;
-  document.getElementById('reset').onclick=resetDemo;
+  document.getElementById('menu').onclick=openMenu;
 }
 function rowHTML(p){
   const d=cur(p),st=dayState(p);
@@ -472,6 +501,7 @@ function renderDetail(p){
       <div class="title"><h2>${esc(p.name)} <small>${esc(p.tutor)}${p.ref?' · REF':''}</small> <span class="tag dep">${p.dept}</span></h2>
       <div class="sub mono">ingreso ${fmtD(p.in)} · día ${p.days.length}</div></div>
       <span class="status ${st}">${stTxt}</span>
+      <button class="chip" id="editp" aria-label="Editar ficha" style="padding:4px 10px">✎</button>
     </header>
     <div class="body">
       <section class="sec">
@@ -569,8 +599,81 @@ function renderDetail(p){
   app.querySelectorAll('.sw[data-f]').forEach(b=>b.onclick=()=>setPresu(p,b.dataset.f,b.getAttribute('aria-checked')!=='true'));
   document.getElementById('prov').onclick=()=>setProvet(p,!d.provet);
   document.getElementById('close').onclick=()=>{view={name:'close',pid:p.id};render();window.scrollTo(0,0)};
+  document.getElementById('editp').onclick=()=>{view={name:'edit',pid:p.id};render();window.scrollTo(0,0)};
 }
 
+function renderPartes(){
+  const list=(S.partes||[]).slice().reverse();
+  app.innerHTML=`
+  <div class="view">
+    <header class="dhdr"><button class="back" id="back">‹ Parte</button><div class="title"><h2>Partes anteriores</h2><div class="sub">Foto del tablero en el momento de cerrar cada día. Solo lectura.</div></div></header>
+    <div class="body">
+      ${list.length?list.map((x,i)=>`<button class="row" data-i="${list.length-1-i}" style="grid-template-columns:1fr auto">
+          <div class="name"><span class="n mono">${fmtD(x.date)}</span><small>${esc(x.label)}</small></div>
+          <div class="dest">${x.n} ingresados</div>
+          <div class="meta"><span class="m">${x.rows.filter(r=>r.state==='closed').length} cerrados</span><span class="m">${x.rows.filter(r=>r.state!=='closed').length} con pendientes</span><span class="m">${x.rows.filter(r=>r.d.dest==='alta').length} altas</span></div>
+        </button>`).join(''):'<div class="empty">Todavía no hay partes guardados. Se guarda uno cada vez que se abre el parte de las 08:00 del día siguiente.</div>'}
+    </div>
+    <div class="bar"><button class="btn primary" id="back2">‹ Volver al parte</button></div>
+  </div>`;
+  const go=()=>{view={name:'list'};render()};
+  document.getElementById('back').onclick=go;document.getElementById('back2').onclick=go;
+  app.querySelectorAll('.row[data-i]').forEach(r=>r.onclick=()=>{view={name:'parte',idx:+r.dataset.i};render();window.scrollTo(0,0)});
+}
+function renderParte(idx){
+  const x=(S.partes||[])[idx];if(!x){view={name:'partes'};return render()}
+  const order={open:0,call:1,closed:2};
+  const rows=x.rows.slice().sort((a,b)=>order[a.state]-order[b.state]||a.name.localeCompare(b.name));
+  app.innerHTML=`
+  <div class="view">
+    <header class="dhdr"><button class="back" id="back">‹ Partes</button><div class="title"><h2>Parte del <span class="mono">${fmtD(x.date)}</span></h2><div class="sub">${esc(x.label)} · ${x.n} ingresados · solo lectura</div></div></header>
+    <div class="list" style="padding-top:12px">
+      ${rows.map(r=>{const p={name:r.name,tutor:r.tutor,dept:r.dept,ref:r.ref,days:{length:r.dayN},id:''};const d=r.d;
+        const dup=x.rows.some(q=>q!==r&&q.name===r.name);
+        const destTxt={'24h':'24h+',alta:'ALTA',pts:'PTS'}[d.dest];const destCls=d.dest==='alta'?'alta':d.dest==='pts'?'pts':'';
+        return`<div class="row ${r.state} ${dep(p.dept)}" style="cursor:default">
+          <div class="name"><span class="n">${esc(p.name)}</span>${dup?`<small>${esc(p.tutor)}</small>`:''}<span class="tag dep">${p.dept}</span>${p.ref?'<span class="tag ref">REF</span>':''}</div>
+          <div class="dest ${destCls}">${destTxt}</div>
+          <div class="items">${d.items.map(i=>itemChip(i)).join('')||'<span class="it" style="opacity:.6">sin plan</span>'}</div>
+          ${d.nota?`<div class="note">${esc(d.nota)}</div>`:''}
+          <div class="meta">
+            <span class="m">tutor <span class="${d.tutor.llamado?'on':'off'}">${d.tutor.llamado?'llamado':'llamar'}</span></span>
+            <span class="m">presu <span class="${d.presu.pagado?'on':'off'}">${d.presu.pagado?'pagado':d.presu.presentado?'presentado':d.presu.hecho?'hecho':'no'}</span></span>
+            <span class="m">receta <span class="${d.presu.receta?'on':'off'}">${d.presu.receta?'sí':'no'}</span></span>
+            <span class="m">Provet <span class="${d.provet?'on':'off'}">${d.provet?'volcado':'pendiente'}</span></span>
+            <span class="m mono" style="font-size:11px">· día ${r.dayN}</span>
+          </div></div>`}).join('')}
+    </div>
+    <div class="bar"><button class="btn primary" id="back2">‹ Partes anteriores</button></div>
+  </div>`;
+  const go=()=>{view={name:'partes'};render()};
+  document.getElementById('back').onclick=go;document.getElementById('back2').onclick=go;
+}
+function renderEdit(p){
+  if(!p){view={name:'list'};return render()}
+  app.innerHTML=`
+  <div class="view">
+    <header class="dhdr ${dep(p.dept)}"><button class="back" id="back">‹ ${esc(p.name)}</button><div class="title"><h2>Editar ficha</h2><div class="sub">Datos con los que se abrió el ingreso.</div></div></header>
+    <div class="body">
+      <section class="sec form">
+        <div class="two">
+          <label>Nombre<input id="fn" value="${esc(p.name)}"></label>
+          <label>Apellido tutor<input id="ft" value="${esc(p.tutor)}"></label>
+        </div>
+        <label>Departamento<select id="fd">${DEPTS.map(x=>`<option ${x===p.dept?'selected':''}>${x}</option>`).join('')}</select></label>
+        <div class="tog"><div class="l">Referido<small>Viene derivado de otro centro</small></div><button class="sw" role="switch" aria-checked="${p.ref}" id="fr"></button></div>
+        <div class="rowbtns"><button class="btn primary" id="ok">Guardar</button><button class="btn ghost" id="cancel">Cancelar</button></div>
+      </section>
+    </div>
+  </div>`;
+  const back=()=>{view={name:'detail',pid:p.id};render()};
+  document.getElementById('back').onclick=back;document.getElementById('cancel').onclick=back;
+  const fr=document.getElementById('fr');fr.onclick=()=>fr.setAttribute('aria-checked',fr.getAttribute('aria-checked')!=='true');
+  document.getElementById('ok').onclick=()=>{const n=document.getElementById('fn').value.trim();if(!n){toast('El nombre no puede estar vacío');return}
+    const ch=[];const t=document.getElementById('ft').value.trim(),dd=document.getElementById('fd').value,r=fr.getAttribute('aria-checked')==='true';
+    if(n!==p.name)ch.push(`nombre ${p.name}→${n}`);if(t!==p.tutor)ch.push(`tutor ${p.tutor}→${t}`);if(dd!==p.dept)ch.push(`dpto ${p.dept}→${dd}`);if(r!==p.ref)ch.push(`REF ${r?'sí':'no'}`);
+    p.name=n;p.tutor=t;p.dept=dd;p.ref=r;if(ch.length)logIt(p,'edita ficha: '+ch.join(', '));save();back();toast('Ficha actualizada')};
+}
 function renderNew(){
   app.innerHTML=`
   <div class="view">
@@ -601,11 +704,17 @@ function renderClose(p){
     <div class="body"><section class="sec form">
       ${motivos.map(m=>`<button class="btn ${m.startsWith('Alta')?'':'danger'}" data-m="${m}" style="justify-content:flex-start">${m}</button>`).join('')}
       <button class="btn ghost" id="cancel">Cancelar</button>
+    </section>
+    <section class="sec form">
+      <h3>Ficha creada por error</h3>
+      <div id="delwrap"><button class="btn danger" id="del" style="justify-content:flex-start">🗑 Eliminar la ficha entera</button></div>
+      <div class="tut" style="font-size:12.5px;color:var(--ink-3)">No es un cierre de ingreso: la ficha desaparece con su histórico. Solo para equivocaciones.</div>
     </section></div>
   </div>`;
   const back=()=>{view={name:'detail',pid:p.id};render()};
   document.getElementById('back').onclick=back;document.getElementById('cancel').onclick=back;
   app.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>closeIngreso(p,b.dataset.m));
+  document.getElementById('del').onclick=()=>{document.getElementById('delwrap').innerHTML=`<button class="act confirm" id="del2" style="width:100%"><span class="ic">🗑</span><span>Sí, eliminar la ficha de ${esc(p.name)}<small>No se puede deshacer</small></span></button>`;document.getElementById('del2').onclick=()=>deletePatient(p)};
 }
 
 load();render();
